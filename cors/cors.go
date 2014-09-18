@@ -21,12 +21,16 @@ import (
 //
 // The origin parameter should be the case-insentive fully qualified origin
 // domain to match or '*' to match any domain.
-func Get(origin string, next http.Handler) http.Handler {
+func Gen(verb string, origin string, next http.Handler) http.Handler {
 	const maxAge = 10 * time.Minute
 	age := strconv.Itoa(int(maxAge / time.Second))
 
+	if verb == "" {
+		return next
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Methods", "GET")
+		w.Header().Set("Access-Control-Allow-Methods", verb)
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Accept-Encoding, Authorization, Content-Type, Origin")
 		w.Header().Set("Access-Control-Allow-Origin", origin)
 
@@ -34,13 +38,24 @@ func Get(origin string, next http.Handler) http.Handler {
 		default:
 			w.WriteHeader(http.StatusMethodNotAllowed)
 		case "OPTIONS":
-			if r.Header.Get("Access-Control-Request-Method") == "GET" {
+			if r.Header.Get("Access-Control-Request-Method") == verb {
 				w.Header().Set("Access-Control-Max-Age", age)
 				return
 			}
 			w.WriteHeader(http.StatusUnauthorized)
-		case "HEAD", "GET":
+		case "HEAD", verb:
 			next.ServeHTTP(w, r)
 		}
 	})
 }
+
+func Get(origin string, next http.Handler) http.Handler {
+	return Gen("GET", origin, next)
+}
+
+
+func Post(origin string, next http.Handler) http.Handler {
+	return Gen("POST", origin, next)
+}
+
+
